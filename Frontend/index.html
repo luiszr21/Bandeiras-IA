@@ -8,22 +8,73 @@
 </head>
 <body>
     <main>
-        <h1>Descubra a Bandeira</h1>
-
+        <h1>Descubra a Bandeira (LATAM)</h1>
+        
         <form id="upload-form" action="#" method="post" enctype="multipart/form-data">
-            <label for="image">Envie sua Bandeira:</label>
-            <input type="file" id="image" name="image" accept="image/*" required>
+            <div class="upload-area" id="upload-area">
+                <input type="file" id="image" name="image" accept="image/*" required hidden>
+                
+                <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="17 8 12 3 7 8"></polyline>
+                    <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+
+                <div class="upload-text" id="upload-text">
+                    Arraste e solte sua imagem aqui ou <span class="highlight">clique</span> para procurar
+                </div>
+                
+                <div class="file-name" id="file-name">Nenhum arquivo selecionado</div>
+            </div>
+
             <button type="submit">Enviar</button>
         </form>
 
         <section id="result" aria-live="polite"></section>
 
+        <p>O modelo atual suporta as seguintes bandeiras: <br> <span class="flags-list">Argentina, Brasil, Chile, Peru, Uruguai, Venezuela</span> </p>
     </main>
 
     <script>
         const form = document.getElementById("upload-form");
         const imageInput = document.getElementById("image");
         const result = document.getElementById("result");
+        
+        const uploadArea = document.getElementById("upload-area");
+        const uploadText = document.getElementById("upload-text");
+        const fileNameDisplay = document.getElementById("file-name");
+
+        uploadArea.addEventListener("click", () => imageInput.click());
+
+        imageInput.addEventListener("change", handleFileSelection);
+
+        uploadArea.addEventListener("dragover", (event) => {
+            event.preventDefault();
+            uploadArea.classList.add("dragover");
+        });
+
+        uploadArea.addEventListener("dragleave", () => {
+            uploadArea.classList.remove("dragover");
+        });
+
+        uploadArea.addEventListener("drop", (event) => {
+            event.preventDefault();
+            uploadArea.classList.remove("dragover");
+            
+            if (event.dataTransfer.files.length) {
+                imageInput.files = event.dataTransfer.files;
+                handleFileSelection();
+            }
+        });
+
+        function handleFileSelection() {
+            if (imageInput.files.length > 0) {
+                const file = imageInput.files[0];
+                fileNameDisplay.textContent = `📁 ${file.name}`;
+                fileNameDisplay.style.display = "block";
+                uploadText.style.display = "none";
+            }
+        }
 
         function renderResult(message, isError = false) {
             result.innerHTML = "";
@@ -33,16 +84,9 @@
 
         async function readResponsePayload(response) {
             const text = await response.text();
-
-            if (!text.trim()) {
-                return null;
-            }
-
-            try {
-                return JSON.parse(text);
-            } catch (error) {
-                return { raw: text };
-            }
+            if (!text.trim()) return null;
+            try { return JSON.parse(text); } 
+            catch (error) { return { raw: text }; }
         }
 
         form.addEventListener("submit", async (event) => {
@@ -67,32 +111,18 @@
                 const data = await readResponsePayload(response);
 
                 if (!response.ok) {
-                    const message = data && data.error
-                        ? data.error
-                        : data && data.raw
-                            ? data.raw
-                            : `Falha ao consultar a inferência (${response.status}).`;
+                    const message = data && data.error ? data.error : data && data.raw ? data.raw : `Falha ao consultar a inferência (${response.status}).`;
                     throw new Error(message);
                 }
+                if (!data) throw new Error("O backend respondeu sem conteúdo.");
+                if (!data.ok && !data.predictedClass) throw new Error(data.error || "Falha ao consultar a inferência.");
 
-                if (!data) {
-                    throw new Error("O backend respondeu sem conteúdo.");
-                }
-
-                if (!data.ok && !data.predictedClass) {
-                    throw new Error(data.error || "Falha ao consultar a inferência.");
-                }
-
-                const confidence = typeof data.confidence === "number"
-                    ? `${(data.confidence * 100).toFixed(2)}%`
-                    : "indisponível";
-
+                const confidence = typeof data.confidence === "number" ? `${(data.confidence * 100).toFixed(2)}%` : "indisponível";
                 renderResult(`Predição: ${data.predictedClass} | Confiança: ${confidence}`);
             } catch (error) {
                 renderResult(error.message, true);
             }
         });
     </script>
-
 </body>
 </html>
