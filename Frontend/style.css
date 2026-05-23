@@ -76,6 +76,26 @@ button[type="submit"]{
 
 button[type="submit"]:hover{filter:brightness(0.98)}
 
+.result{
+    width:100%;
+    padding:14px 16px;
+    border-radius:10px;
+    background:#eff6ff;
+    color:#1e3a8a;
+    border:1px solid #bfdbfe;
+    min-height:52px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-weight:600;
+}
+
+.result.error{
+    background:#fef2f2;
+    color:#991b1b;
+    border-color:#fecaca;
+}
+
 
 @media (max-width:480px){
     main{padding:20px}

@@ -10,6 +10,7 @@ const { spawn } = require("child_process");
 const PORT = process.env.PORT || 3000;
 const MODEL_PATH = process.env.MODEL_PATH || path.join(__dirname, "models_saved", "model.pth");
 const PYTHON_CMD = process.env.PYTHON_CMD || "python";
+const FRONTEND_DIR = path.join(__dirname, "Frontend");
 
 const RUNTIME_DIR = path.join(__dirname, ".runtime");
 const UPLOAD_DIR = path.join(RUNTIME_DIR, "uploads");
@@ -32,10 +33,10 @@ from PIL import Image
 
 
 class CNN(nn.Module):
-    def __init__(self, num_classes): # Added num_classes argument
+    def __init__(self):
         super().__init__()
-
         self.network = nn.Sequential(
+
             nn.Conv2d(3, 32, 3, padding=1),
             nn.ReLU(),
             nn.MaxPool2d(2),
@@ -44,13 +45,16 @@ class CNN(nn.Module):
             nn.ReLU(),
             nn.MaxPool2d(2),
 
-            nn.Flatten(),
-
-            nn.Linear(64 * 56 * 56, 128), # Corrected input features for the linear layer
+            nn.Conv2d(64, 128, 3, padding=1),
             nn.ReLU(),
-
-            nn.Linear(128, num_classes) # Changed output to num_classes
+            nn.MaxPool2d(2),
+            nn.Flatten(),
+            nn.Linear(128 * 28 * 28, 256),
+            nn.ReLU(),
+            nn.Dropout(0.5),
+            nn.Linear(256, 6)
         )
+
     def forward(self, x):
         return self.network(x)
 
@@ -81,7 +85,7 @@ def load_model(model_path):
 
     model.eval()
 
-    input_size = config.get("input_size", 128)
+    input_size = config.get("input_size", 224)
 
     transform = transforms.Compose([
         transforms.Resize((input_size, input_size)),
@@ -375,6 +379,11 @@ async function bootstrap() {
     }
 
     const app = express();
+    app.use(express.static(FRONTEND_DIR));
+
+    app.get("/", (req, res) => {
+        res.sendFile(path.join(FRONTEND_DIR, "index.html"));
+    });
 
     app.post("/infer", upload.single("image"), async (req, res) => {
         if (!req.file) {

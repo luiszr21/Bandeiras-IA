@@ -16,8 +16,83 @@
             <button type="submit">Enviar</button>
         </form>
 
-       
+        <section id="result" aria-live="polite"></section>
+
     </main>
+
+    <script>
+        const form = document.getElementById("upload-form");
+        const imageInput = document.getElementById("image");
+        const result = document.getElementById("result");
+
+        function renderResult(message, isError = false) {
+            result.innerHTML = "";
+            result.className = isError ? "result error" : "result";
+            result.textContent = message;
+        }
+
+        async function readResponsePayload(response) {
+            const text = await response.text();
+
+            if (!text.trim()) {
+                return null;
+            }
+
+            try {
+                return JSON.parse(text);
+            } catch (error) {
+                return { raw: text };
+            }
+        }
+
+        form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+
+            if (!imageInput.files.length) {
+                renderResult("Selecione uma imagem antes de enviar.", true);
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append("image", imageInput.files[0]);
+
+            renderResult("Analisando imagem...");
+
+            try {
+                const response = await fetch("/infer", {
+                    method: "POST",
+                    body: formData
+                });
+
+                const data = await readResponsePayload(response);
+
+                if (!response.ok) {
+                    const message = data && data.error
+                        ? data.error
+                        : data && data.raw
+                            ? data.raw
+                            : `Falha ao consultar a inferência (${response.status}).`;
+                    throw new Error(message);
+                }
+
+                if (!data) {
+                    throw new Error("O backend respondeu sem conteúdo.");
+                }
+
+                if (!data.ok && !data.predictedClass) {
+                    throw new Error(data.error || "Falha ao consultar a inferência.");
+                }
+
+                const confidence = typeof data.confidence === "number"
+                    ? `${(data.confidence * 100).toFixed(2)}%`
+                    : "indisponível";
+
+                renderResult(`Predição: ${data.predictedClass} | Confiança: ${confidence}`);
+            } catch (error) {
+                renderResult(error.message, true);
+            }
+        });
+    </script>
 
 </body>
 </html>

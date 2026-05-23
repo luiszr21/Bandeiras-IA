@@ -10,11 +10,12 @@ from torchvision import transforms
 from PIL import Image
 
 
+
 class CNN(nn.Module):
     def __init__(self):
         super().__init__()
-
         self.network = nn.Sequential(
+
             nn.Conv2d(3, 32, 3, padding=1),
             nn.ReLU(),
             nn.MaxPool2d(2),
@@ -23,12 +24,14 @@ class CNN(nn.Module):
             nn.ReLU(),
             nn.MaxPool2d(2),
 
-            nn.Flatten(),
-
-            nn.Linear(64 * 32 * 32, 128),
+            nn.Conv2d(64, 128, 3, padding=1),
             nn.ReLU(),
-
-            nn.Linear(128, 10)
+            nn.MaxPool2d(2),
+            nn.Flatten(),
+            nn.Linear(128 * 28 * 28, 256),
+            nn.ReLU(),
+            nn.Dropout(0.5),
+            nn.Linear(256, 6)
         )
 
     def forward(self, x):
@@ -61,7 +64,7 @@ def load_model(model_path):
 
     model.eval()
 
-    input_size = config.get("input_size", 128)
+    input_size = config.get("input_size", 224)
 
     transform = transforms.Compose([
         transforms.Resize((input_size, input_size)),
